@@ -7,12 +7,12 @@
 - [x] Compound Join 复合联结条件
 - [x] Implicit Join 隐式联结
 - [x] Outer Join 外联结
-- [ ] Outer Join Between Multiple Tables 多表外联结
-- [ ] Self Outer Join 自外联结
-- [ ] Natural Join 自然联结
+- [x] Outer Join Between Multiple Tables 多表外联结
+- [x] Self Outer Join 自外联结
+- [x] Natural Join 自然联结
 - [x] Cross Join 交叉联结
-- [ ] Unions 联合
-- [ ] Using Cluse
+- [x] Unions 联合
+- [x] Using Cluse
 
 
 
@@ -83,11 +83,25 @@ RIGHT JOIN orders sub
 
 
 
+自外联结也是可行的，联结对任何表都一视同仁。
+
+```sql
+USE sql_hr;
+
+SELECT
+    main.employee_id,
+    main.first_name,
+    sub.first_name AS manager
+FROM employees main
+LEFT JOIN employees sub
+    ON main.reports_to = sub.employee_id;
+```
 
 
 
+### C 额外说明
 
-### C 特殊联结
+**隐式联结和交叉联结**
 
 隐式联结是一种糟糕的使用方法，甚至可以说是糟糕的实现，因为它表明有两种方法来实现同一个功能，这是邪恶的。
 
@@ -112,9 +126,89 @@ WHERE main.customer_id = sub.customer_id;
 
 
 
+**USING 字句**
+
+在使用联结是会频繁遇到判断两张表中的某个字段是否相等的情况，此时可以用 USING 子句来简写。请看下面的示例，原本的判断字段相等的语句被注释了，取而代之的是 USING 子句。
+
+```sql
+USE sql_store;
+
+SLEECT
+	main.order_id,
+	sub.first_name
+FROM orders main
+JOIN customers sub
+	-- ON main.customer_id = sub.customer_id
+	USING (customer_id);
+```
+
+这对于复合联结也是可行的，注意下面的示例
+
+```sql
+SELECT *
+FROM order_items main
+JOIN order_item_notes sub
+	-- ON main.order_id = sub.order_id AND main.product_id = sub.product_id;
+	USING (order_id, product_id);
+```
 
 
 
+**自然联结**
+
+自然联结的关键字是 NATURAL JOIN.
+
+自然联结是一个糟糕的设计，它根据两张表中的相同字段自行联结，具体的联结方式有数据库引擎决定，因此它并不由程序编写者掌控。
+
+避免使用自然联结。
+
+
+
+**联合**
+
+联合的关键字是 UNION. 将两个查询语句的结构用 UNION 关键字拼接在一起，就能一同返回。比如有如下两个查询：
+
+```sql
+SLEECT *
+FROM ...
+WHERE ... < 5;
+```
+
+```SQL
+SELECT *
+FROM ...
+WHERE ... > 10;
+```
+
+使用 UNION 关键字拼接起来。
+
+```sql
+SLEECT *
+FROM ...
+WHERE ... < 5
+UNION
+SELECT *
+FROM ...
+WHERE ... > 10;
+```
+
+现在有这样的需求，需要对顾客的积分进行划分，从而确定出青铜、白银和黄金三个等级的客户，以下是实现上述需求的 sql 语句:
+
+```sql
+USE sql_store;
+
+SELECT customer_id, first_name, points, "Bronze" AS type
+FROM customers
+WHERE points < 2000
+UNION
+SELECT customer_id, first_name, points, "Silver" AS type
+FROM customers
+WHERE points BETWEEN 2000 AND 3000
+UNION
+SELECT customer_id, first_name, points, "GOLD" AS type
+FROM customers
+WHERE points > 3000;
+```
 
 
 
@@ -134,9 +228,7 @@ JOIN products sub
 	ON main.product_id = sub.product_id;
 ```
 
-**2**  无
 
-**3**  无
 
 **4**  将 sql\_invoicing 中的 payments, payments_method, clients 联结起来，并生成一份报告，显示付款、客户姓名、付款方式等详细信息。
 
@@ -153,5 +245,24 @@ JOIN clients sub
 	ON main.client_id = sub.client_id
 JOIN payment_methods subb
 	ON main.payment_method = subb.payment_method_id;
+```
+
+
+
+**10**  在 sql_invoicing 中操作。在 payments 表中查询数据，该数据包含日期，客户，付款额和付款方式。
+
+```sql
+USE sql_invoicing;
+
+SELECT
+    main.date,
+    sub.name,
+    main.amount,
+    subb.name
+FROM payments main
+JOIN clients sub
+    USING (client_id)
+JOIN payment_methods subb
+    ON main.payment_method = subb.payment_method_id;
 ```
 
